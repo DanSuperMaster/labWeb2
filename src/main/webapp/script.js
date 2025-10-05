@@ -4,266 +4,634 @@ var ctx = print.getContext("2d");
 button.addEventListener("click", pressed);
 ctx.lineWidth = 1;
 drawCoordinates();
-drawAreas();
 
-// Загрузка сохраненных данных при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    loadTableData();
+// Добавляем обработчики событий для canvas
+print.addEventListener("click", handleCanvasClick);
+print.addEventListener("mousemove", handleCanvasMouseMove);
+print.addEventListener("mouseenter", handleCanvasMouseEnter);
+print.addEventListener("mouseleave", handleCanvasMouseLeave);
+
+// Переменные для отслеживания состояния мыши
+var isMouseOverCanvas = false;
+var currentMouseX = 0;
+var currentMouseY = 0;
+
+// Система разброса
+var spreadRadius = 20; // Начальный радиус разброса
+var minSpreadRadius = 5; // Минимальный радиус
+var maxSpreadRadius = 40; // Максимальный радиус
+var hitCount = 0; // Счетчик попаданий
+var missCount = 0; // Счетчик промахов
+var requiredHits = 5; // Количество попаданий для уменьшения разброса
+var requiredMisses = 5; // Количество промахов для увеличения разброса
+
+const params = new URLSearchParams({
+  x: "1000",
+  y: "1000",
+  r: "1000"
 });
 
-function getCheckedCheckBoxes() {
-    var checkboxes = document.getElementsByClassName('checkbox');
-    var checkboxesChecked = [];
-    for (var index = 0; index < checkboxes.length; index++) {
-        if (checkboxes[index].checked) {
-            checkboxesChecked.push(checkboxes[index].value);
-        }
+var answer = fetch(`/control?${params}`, {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+  }
+}).then(response => {
+  console.log(response)
+  if (!response.ok) {
+    throw new Error('Ошибка сети: ' + response.status);
+  }
+  return response.json();
+}).then(data => {
+  console.log("Получены данные:", data);
+  console.log("Количество элементов:", data.length);
+  for (let i = 0; i < data.length; i++) {
+    addTableRow(
+      data[i].x,
+      data[i].y,
+      data[i].r,
+      data[i].control,
+      data[i].timeOfProcess,
+      new Date().toLocaleTimeString(),
+    );
+  }
+  // После добавления данных в таблицу отрисовываем точки
+  drawPointsFromTable();
+});
+
+// Функция для обновления системы разброса
+function updateSpreadSystem(isHit) {
+  if (isHit) {
+    hitCount++;
+    missCount = 0; // Сбрасываем счетчик промахов
+    document.getElementById("demo").innerHTML = "Попадание! (" + hitCount + "/" + requiredHits + " для уменьшения разброса)";
+  } else {
+    missCount++;
+    hitCount = 0; // Сбрасываем счетчик попаданий
+    document.getElementById("demo").innerHTML = "Промах! (" + missCount + "/" + requiredMisses + " для увеличения разброса)";
+  }
+
+  // Проверяем условия для изменения разброса
+  if (hitCount >= requiredHits) {
+    // Уменьшаем разброс
+    spreadRadius = Math.max(minSpreadRadius, spreadRadius - 5);
+    hitCount = 0;
+    showSpreadChangeMessage("Разброс уменьшен! Новый радиус: " + spreadRadius + "px", "green");
+  }
+
+  if (missCount >= requiredMisses) {
+    // Увеличиваем разброс
+    spreadRadius = Math.min(maxSpreadRadius, spreadRadius + 5);
+    missCount = 0;
+    showSpreadChangeMessage("Разброс увеличен! Новый радиус: " + spreadRadius + "px", "red");
+  }
+
+  // Обновляем отображение счетчиков
+  updateSpreadDisplay();
+}
+
+// Функция для показа сообщения об изменении разброса
+function showSpreadChangeMessage(message, color) {
+  var messageDiv = document.getElementById("demo");
+  messageDiv.innerHTML = message;
+  messageDiv.style.color = color;
+  messageDiv.style.fontWeight = "bold";
+
+  // Мигание эффекта
+  var originalColor = messageDiv.style.color;
+  var blinkCount = 0;
+  var blinkInterval = setInterval(function() {
+    messageDiv.style.visibility = messageDiv.style.visibility === 'hidden' ? 'visible' : 'hidden';
+    blinkCount++;
+    if (blinkCount >= 6) { // 3 мигания
+      clearInterval(blinkInterval);
+      messageDiv.style.visibility = 'visible';
     }
-    return checkboxesChecked;
+  }, 200);
+}
+
+// Функция для обновления отображения счетчиков разброса
+function updateSpreadDisplay() {
+  var spreadInfo = document.getElementById("spreadInfo");
+  if (!spreadInfo) {
+    // Создаем элемент если его нет
+    spreadInfo = document.createElement("div");
+    spreadInfo.id = "spreadInfo";
+    spreadInfo.style.position = "absolute";
+    spreadInfo.style.top = "10px";
+    spreadInfo.style.right = "10px";
+    spreadInfo.style.backgroundColor = "rgba(255, 255, 255, 0.8)";
+    spreadInfo.style.padding = "10px";
+    spreadInfo.style.borderRadius = "5px";
+    spreadInfo.style.border = "1px solid #ccc";
+    spreadInfo.style.fontSize = "14px";
+    document.body.appendChild(spreadInfo);
+  }
+
+  spreadInfo.innerHTML = `
+    <strong>Система разброса:</strong><br>
+    Радиус: ${spreadRadius}px<br>
+    Попадания: ${hitCount}/${requiredHits}<br>
+    Промахи: ${missCount}/${requiredMisses}
+  `;
+}
+
+// Функция для генерации случайной точки внутри круга
+function getRandomPointInCircle(centerX, centerY, radius) {
+  var angle = Math.random() * 2 * Math.PI;
+  var distance = Math.random() * radius;
+
+  // Вычисляем координаты
+  var x = centerX + distance * Math.cos(angle);
+  var y = centerY + distance * Math.sin(angle);
+
+  return { x: x, y: y };
+}
+
+// Функция для обработки входа мыши на canvas
+function handleCanvasMouseEnter() {
+  isMouseOverCanvas = true;
+  print.style.cursor = "crosshair";
+  drawAreas();
+}
+
+
+function handleCanvasMouseLeave() {
+  isMouseOverCanvas = false;
+  print.style.cursor = "default";
+  drawAreas();
+}
+
+function handleCanvasMouseMove(event) {
+  if (!isMouseOverCanvas) return;
+
+  var rect = print.getBoundingClientRect();
+  currentMouseX = event.clientX - rect.left;
+  currentMouseY = event.clientY - rect.top;
+
+  drawAreas();
+}
+
+function drawCrosshairAndSpread(x, y) {
+  var selectedRadii = getCheckedCheckBoxes();
+  if (selectedRadii.length === 0) return;
+
+  var currentR = parseFloat(selectedRadii[0]);
+
+  var mathCoords = convertCanvasToMath(x, y);
+
+  ctx.beginPath();
+  ctx.arc(x, y, spreadRadius, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(0, 100, 255, 0.7)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x, y, spreadRadius, 0, 2 * Math.PI);
+  ctx.fillStyle = 'rgba(0, 100, 255, 0.1)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+  ctx.lineWidth = 1.5;
+
+  ctx.moveTo(x, y - 12);
+  ctx.lineTo(x, y + 12);
+
+  ctx.moveTo(x - 12, y);
+  ctx.lineTo(x + 12, y);
+
+  // Внешний круг прицела
+  ctx.arc(x, y, 8, 0, 2 * Math.PI);
+
+  ctx.stroke();
+
+  ctx.fillStyle = 'black';
+  ctx.font = '12px Arial';
+  ctx.fillText(`X: ${mathCoords.x.toFixed(2)}, Y: ${mathCoords.y.toFixed(2)}`, x + 15, y - 15);
+
+  // Показываем зону разброса
+  var spreadInUnits = (spreadRadius / (177 / currentR)).toFixed(2);
+  ctx.fillText(`Разброс: ±${spreadInUnits}`, x + 15, y + 30);
+  ctx.fillText(`Радиус: ${spreadRadius}px`, x + 15, y + 45);
+}
+
+function handleCanvasClick(event) {
+  var listOfR = getCheckedCheckBoxes();
+
+  if (listOfR.length === 0) {
+    document.getElementById("demo").innerHTML = "Ошибка: выберите радиус R";
+    return;
+  }
+
+  var rect = print.getBoundingClientRect();
+  var clickX = event.clientX - rect.left;
+  var clickY = event.clientY - rect.top;
+
+  var randomPoint = getRandomPointInCircle(clickX, clickY, spreadRadius);
+
+  var mathCoords = convertCanvasToMath(randomPoint.x, randomPoint.y);
+
+  sendPointWithSpread(mathCoords.x, mathCoords.y, listOfR, randomPoint.x, randomPoint.y);
+}
+
+function sendPointWithSpread(x, y, r, canvasX, canvasY) {
+  console.log("Отправка точки с разбросом: X=" + x + ", Y=" + y + ", R=" + r.join(','));
+
+  const params = new URLSearchParams({
+    x: String(x),
+    y: String(y),
+    r: r.join(',')
+  });
+
+  var answer = fetch(`/control?${params}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  }).then(response => {
+    console.log(response)
+    if (!response.ok) {
+      throw new Error('Ошибка сети: ' + response.status);
+    }
+    return response.json();
+  }).then(data => {
+    console.log("Получены данные:", data);
+    console.log("Количество элементов:", data.length);
+    clearTable();
+
+    var lastResult = data[data.length - 1];
+    var isHit = lastResult.control == 1;
+
+    updateSpreadSystem(isHit);
+
+    for (let i = 0; i < data.length; i++) {
+      addTableRow(
+        data[i].x,
+        data[i].y,
+        data[i].r,
+        data[i].control,
+        data[i].timeOfProcess,
+        new Date().toLocaleTimeString(),
+      );
+    }
+
+    drawAreas();
+  }).catch(error => {
+    console.error('Ошибка:', error);
+    document.getElementById("demo").innerHTML = "Ошибка: " + error.message;
+  });
+
+  document.getElementById("demo").innerHTML = "Точка отправлена: X=" + x + ", Y=" + y + " (случайный разброс)";
+}
+
+function convertCanvasToMath(canvasX, canvasY) {
+  var centerX = 23 * 8; // 184
+  var centerY = 23 * 9; // 207
+
+  var maxR = 3;
+
+  // Масштабные коэффициенты
+  var scaleX = 177 / maxR;
+  var scaleY = 177 / maxR;
+
+  var mathX = (canvasX - centerX) / scaleX;
+  var mathY = (centerY - canvasY) / scaleY;
+
+  mathX = Math.round(mathX * 100) / 100;
+  mathY = Math.round(mathY * 100) / 100;
+
+  return { x: mathX, y: mathY };
+}
+
+function convertMathToCanvas(mathX, mathY, currentR) {
+  var centerX = 23 * 8; // 184
+  var centerY = 23 * 9; // 207
+
+  var scale = currentR / 3;
+  var scaleX = 177 * scale;
+  var scaleY = 177 * scale;
+
+  var canvasX = centerX + mathX * (scaleX / currentR);
+  var canvasY = centerY - mathY * (scaleY / currentR); // инвертируем Y
+
+  return { x: canvasX, y: canvasY };
+}
+
+
+function drawPointsFromTable() {
+  var table = document.getElementById("resultsTable");
+  var rows = table.rows;
+
+  for (var i = 1; i < rows.length; i++) {
+    var cells = rows[i].cells;
+    var x = parseFloat(cells[0].textContent);
+    var y = parseFloat(cells[1].textContent);
+    var r = parseFloat(cells[2].textContent);
+    var control = cells[3].textContent === "In area";
+
+    drawPoint(x, y, r, control);
+  }
+}
+
+function drawPoint(x, y, r, isInArea) {
+  var selectedRadii = getCheckedCheckBoxes();
+  if (selectedRadii.length === 0) return;
+
+  var currentR = parseFloat(selectedRadii[0]);
+
+  var canvasCoords = convertMathToCanvas(x, y, currentR);
+
+  var color = isInArea ? 'green' : 'red';
+
+  ctx.beginPath();
+  ctx.arc(canvasCoords.x, canvasCoords.y, 4, 0, 2 * Math.PI);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function sendPoint(x, y, r) {
+  console.log("Отправка точки: X=" + x + ", Y=" + y + ", R=" + r.join(','));
+
+  const params = new URLSearchParams({
+    x: String(x),
+    y: String(y),
+    r: r.join(',')
+  });
+
+  var answer = fetch(`/control?${params}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  }).then(response => {
+    console.log(response)
+    if (!response.ok) {
+      throw new Error('Ошибка сети: ' + response.status);
+    }
+    return response.json();
+  }).then(data => {
+    console.log("Получены данные:", data);
+    console.log("Количество элементов:", data.length);
+    clearTable();
+    for (let i = 0; i < data.length; i++) {
+      addTableRow(
+        data[i].x,
+        data[i].y,
+        data[i].r,
+        data[i].control,
+        data[i].timeOfProcess,
+        new Date().toLocaleTimeString(),
+      );
+    }
+
+    drawAreas();
+  }).catch(error => {
+    console.error('Ошибка:', error);
+    document.getElementById("demo").innerHTML = "Ошибка: " + error.message;
+  });
+
+  document.getElementById("demo").innerHTML = "Точка отправлена: X=" + x + ", Y=" + y;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    addRadiusCheckboxListeners();
+
+    if (print && print.getContext) {
+      drawAreas();
+      updateSpreadDisplay();
+    } else {
+      console.error('Canvas element not found or not supported');
+    }
+  }, 100);
+});
+
+
+function getCheckedCheckBoxes() {
+  var checkboxes = document.getElementsByClassName('checkbox');
+  var checkboxesChecked = [];
+  for (var index = 0; index < checkboxes.length; index++) {
+    if (checkboxes[index].checked) {
+      checkboxesChecked.push(checkboxes[index].value);
+    }
+  }
+  return checkboxesChecked;
 }
 
 function drawCoordinates() {
-    ctx.beginPath();
-    ctx.strokeStyle = 'black';
-    ctx.moveTo(23 * 8, 0);
-    ctx.lineTo(23 * 8, 400);
-    ctx.moveTo(0, 23 * 9);
-    ctx.lineTo(400, 23 * 9);
-    drawArrowX();
-    drawArrowY();
-    drawSmallLines();
-    drawLetters();
-    ctx.stroke();
+  ctx.beginPath();
+  ctx.strokeStyle = 'black';
+  ctx.moveTo(23 * 8, 0);
+  ctx.lineTo(23 * 8, 400);
+  ctx.moveTo(0, 23 * 9);
+  ctx.lineTo(400, 23 * 9);
+  drawArrowX();
+  drawArrowY();
+  drawSmallLines();
+  drawLetters();
+  ctx.stroke();
 }
 
 function drawArrowX() {
-    ctx.moveTo(400 - 6, 23 * 9 - 6);
-    ctx.lineTo(400, 23 * 9);
-    ctx.moveTo(400 - 6, 23 * 9 + 6);
-    ctx.lineTo(400, 23 * 9);
+  ctx.moveTo(400 - 6, 23 * 9 - 6);
+  ctx.lineTo(400, 23 * 9);
+  ctx.moveTo(400 - 6, 23 * 9 + 6);
+  ctx.lineTo(400, 23 * 9);
 }
 
 function drawArrowY() {
-    ctx.moveTo(23 * 8 - 6, 0 + 6);
-    ctx.lineTo(23 * 8, 0);
-    ctx.moveTo(23 * 8 + 6, 0 + 6);
-    ctx.lineTo(23 * 8, 0);
+  ctx.moveTo(23 * 8 - 6, 0 + 6);
+  ctx.lineTo(23 * 8, 0);
+  ctx.moveTo(23 * 8 + 6, 0 + 6);
+  ctx.lineTo(23 * 8, 0);
 }
 
 function drawSmallLines() {
-    ctx.moveTo(23 * 8 - 3, 120);
-    ctx.lineTo(23 * 8 + 3, 120);
+  ctx.moveTo(23 * 8 - 3, 120);
+  ctx.lineTo(23 * 8 + 3, 120);
 
-    ctx.moveTo(23 * 8 - 3, 30);
-    ctx.lineTo(23 * 8 + 3, 30);
+  ctx.moveTo(23 * 8 - 3, 30);
+  ctx.lineTo(23 * 8 + 3, 30);
 
-    ctx.moveTo(23 * 8 - 3, 300);
-    ctx.lineTo(23 * 8 + 3, 300);
+  ctx.moveTo(23 * 8 - 3, 295);
+  ctx.lineTo(23 * 8 + 3, 295);
 
-    ctx.moveTo(23 * 8 - 3, 390);
-    ctx.lineTo(23 * 8 + 3, 390);
+  ctx.moveTo(23 * 8 - 3, 390);
+  ctx.lineTo(23 * 8 + 3, 390);
 
-    ctx.moveTo(361, 23 * 9 - 3);
-    ctx.lineTo(361, 23 * 9 + 3);
+  ctx.moveTo(361, 23 * 9 - 3);
+  ctx.lineTo(361, 23 * 9 + 3);
 
-    ctx.moveTo(280, 23 * 9 - 3);
-    ctx.lineTo(280, 23 * 9 + 3);
+  ctx.moveTo(270, 23 * 9 - 3);
+  ctx.lineTo(270, 23 * 9 + 3);
 
-    ctx.moveTo(110, 23 * 9 - 3);
-    ctx.lineTo(110, 23 * 9 + 3);
+  ctx.moveTo(96, 23 * 9 - 3);
+  ctx.lineTo(96, 23 * 9 + 3);
 
-    ctx.moveTo(30, 23 * 9 - 3);
-    ctx.lineTo(30, 23 * 9 + 3);
+  ctx.moveTo(8, 23 * 9 - 3);
+  ctx.lineTo(8, 23 * 9 + 3);
 }
 
 function drawLetters() {
-    ctx.fillText("R/2", 23 * 8 - 22, 110);
+  ctx.fillText("1.5", 23 * 8 - 22, 110);
 
-    ctx.fillText("R", 23 * 8 - 12, 30);
+  ctx.fillText("3", 23 * 8 - 12, 30);
 
-    ctx.fillText("-R/2", 23 * 8 + 6, 300);
+  ctx.fillText("-1.5", 23 * 8 + 6, 300);
 
-    ctx.fillText("-R", 23 * 8 + 6, 390);
+  ctx.fillText("-3", 23 * 8 + 6, 390);
 
-    ctx.fillText("R", 358, 23 * 9 + 12);
+  ctx.fillText("3", 358, 23 * 9 + 12);
 
-    ctx.fillText("R/2", 280, 23 * 9 + 12);
+  ctx.fillText("1.5", 270, 23 * 9 + 12);
 
-    ctx.fillText("-R/2", 110, 23 * 9 + 12);
-    ctx.fillText("-R", 30, 23 * 9 + 12);
+  ctx.fillText("-1.5", 96, 23 * 9 + 12);
+  ctx.fillText("-3", 8, 23 * 9 + 12);
 }
 
 function drawAreas() {
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
-    ctx.moveTo(184, 207);
-    ctx.arc(184, 207, 177, 1.5 * Math.PI, 2 * Math.PI, false);
-    ctx.closePath();
-    ctx.fill();
+  ctx.clearRect(0, 0, print.width, print.height);
 
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
-    ctx.moveTo(23 * 8, 120);
-    ctx.lineTo(30, 23 * 9);
-    ctx.lineTo(184, 23 * 9);
-    ctx.closePath();
-    ctx.fill();
+  drawCoordinates();
 
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
-    ctx.rect(30, 23 * 9, 154, 183);
-    ctx.fill();
-    ctx.closePath();
+  var selectedRadii = getCheckedCheckBoxes();
+
+  var centerX = 23 * 8; // 184
+  var centerY = 23 * 9; // 207
+
+  if (selectedRadii.length > 0) {
+    var colors = [
+      'rgba(0, 0, 255, 0.3)',    // синий
+      'rgba(0, 255, 0, 0.3)',    // зеленый
+      'rgba(255, 0, 0, 0.3)',    // красный
+      'rgba(255, 255, 0, 0.3)',  // желтый
+      'rgba(255, 0, 255, 0.3)',  // пурпурный
+      'rgba(0, 255, 255, 0.3)',  // голубой
+      'rgba(128, 0, 128, 0.3)',  // фиолетовый
+      'rgba(255, 165, 0, 0.3)'   // оранжевый
+    ];
+
+    for (var i = 0; i < selectedRadii.length; i++) {
+      var currentR = parseFloat(selectedRadii[i]);
+      var color = colors[i % colors.length];
+
+      var scale = currentR / 3;
+      var scaledR = 177 * scale;
+      var scaledHalfR = scaledR / 2;
+
+      ctx.beginPath();
+      ctx.fillStyle = color;
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, scaledHalfR, Math.PI, 0.5 * Math.PI, true);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = color;
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX + scaledR, centerY);
+      ctx.lineTo(centerX, centerY + scaledHalfR);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = color;
+      ctx.rect(centerX, centerY, -scaledR, -scaledHalfR);
+      ctx.fill();
+      ctx.closePath();
+
+      ctx.fillStyle = 'black';
+      ctx.font = '12px Arial';
+      ctx.fillText('R=' + currentR, centerX + 10, 20 + i * 15);
+    }
+
+  }
+
+  drawPointsFromTable();
+
+  if (isMouseOverCanvas) {
+    drawCrosshairAndSpread(currentMouseX, currentMouseY);
+  }
 }
 
+
+
 function pressed() {
-    var listOfX = getCheckedCheckBoxes();
-    var yCoordinateElement = document.getElementById("Y");
-    var RCoordinateList = document.querySelector('input[name="drone"]:checked');
-    var RCoordinate = -10;
-    var YCoordinate = "";
+  var listOfR = getCheckedCheckBoxes();
+  var xCoordinateElement = document.getElementById("X");
+  var yCoordinateList = document.querySelector('input[name="numberGroup"]:checked');
+  var YCoordinate = -10;
+  var XCoordinate = "";
 
-    if ((listOfX.length != 0) && (yCoordinateElement) && (RCoordinateList != null)) {
-        RCoordinate = RCoordinateList.value;
-        YCoordinate = yCoordinateElement.value;
-        YCoordinate = YCoordinate.replace(',', '.')
+  if ((listOfR.length != 0) && (xCoordinateElement) && (yCoordinateList != null)) {
+    YCoordinate = yCoordinateList.value;
+    XCoordinate = xCoordinateElement.value;
+    XCoordinate = XCoordinate.replace(',', '.')
 
-        if (!isNaN(YCoordinate) && (YCoordinate >= -3) && (YCoordinate <= 5)) {
-            console.log("sending ... ")
-
-
-            const params = new URLSearchParams({
-                x: listOfX.join(','), // преобразуем массив в строку через запятую
-                y: YCoordinate,
-                r: String(RCoordinate)
-            });
-
-            var answer = fetch(`/control?${params}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            }).then(response => {
-                console.log(response)
-                if (!response.ok) {
-                    throw new Error('Ошибка сети: ' + response.status);
-                }
-                return response.json();
-            }).then(data => {
-                console.log("Получены данные:", data);
-                console.log("Количество элементов:", data.length);
-                for (let i = 0; i < data.length; i++) {
-                    addTableRow(
-                        data[i].x,
-                        data[i].y,
-                        data[i].r,
-                        data[i].control,
-                        data[i].timeOfProcess,
-                        new Date().toLocaleTimeString(),
-                    );
-                }
-                // Сохраняем таблицу после добавления новых данных
-                saveTableData();
-            }).catch(error => {
-                console.error('Ошибка:', error);
-                document.getElementById("demo").innerHTML = "Ошибка: " + error.message;
-            });
-            document.getElementById("demo").innerHTML = "You pro!";
-
-        } else {
-            document.getElementById("demo").innerHTML = "You noob! Y должен быть числом от -3 до 5";
-        }
+    if (!isNaN(XCoordinate) && (XCoordinate >= -5) && (XCoordinate <= 5)) {
+      console.log("sending ... ")
+      sendPoint(XCoordinate, YCoordinate, listOfR);
     } else {
-        var errorMessage = "Ошибка: ";
-        if (listOfX.length === 0) errorMessage += "выберите X, ";
-        if (!yCoordinateElement) errorMessage += "элемент Y не найден, ";
-        if (RCoordinateList == null) errorMessage += "выберите R";
-
-        document.getElementById("demo").innerHTML = errorMessage;
+      document.getElementById("demo").innerHTML = "You noob! X должен быть числом от -5 до 5";
     }
+  } else {
+    var errorMessage = "Ошибка: ";
+    if (listOfR.length === 0) errorMessage += "выберите R, ";
+    if (!xCoordinateElement) errorMessage += "элемент X не найден, ";
+    if (yCoordinateList == null) errorMessage += "выберите Y";
+
+    document.getElementById("demo").innerHTML = errorMessage;
+  }
 }
 
 function addTableRow(x, y, r, control, timeScript, localTime) {
-    var table = document.getElementById("resultsTable");
-    var row = table.insertRow(-1);
+  var table = document.getElementById("resultsTable");
+  var row = table.insertRow(-1);
 
-    var cell1 = row.insertCell(0);
-    var cell2 = row.insertCell(1);
-    var cell3 = row.insertCell(2);
-    var cell4 = row.insertCell(3);
-    var cell5 = row.insertCell(4);
-    var cell6 = row.insertCell(5);
+  var cell1 = row.insertCell(0);
+  var cell2 = row.insertCell(1);
+  var cell3 = row.insertCell(2);
+  var cell4 = row.insertCell(3);
+  var cell5 = row.insertCell(4);
+  var cell6 = row.insertCell(5);
 
-    cell1.textContent = x;
-    cell2.textContent = y;
-    cell3.textContent = r;
-    if (control == 1) {
-        cell4.textContent = "In area";
-    } else {
-        cell4.textContent = "Out of area";
-    }
-    cell5.textContent = timeScript;
-    cell6.textContent = localTime.toLocaleString();
-}
-
-// Функция для сохранения данных таблицы в localStorage
-function saveTableData() {
-    var table = document.getElementById("resultsTable");
-    var rows = table.rows;
-    var tableData = [];
-
-    // Начинаем с 1, чтобы пропустить заголовок
-    for (var i = 1; i < rows.length; i++) {
-        var cells = rows[i].cells;
-        tableData.push({
-            x: cells[0].textContent,
-            y: cells[1].textContent,
-            r: cells[2].textContent,
-            control: cells[3].textContent === "In area" ? 1 : 0,
-            timeScript: cells[4].textContent,
-            localTime: cells[5].textContent // сохраняем как строку
-        });
-    }
-
-    localStorage.setItem('resultsTableData', JSON.stringify(tableData));
+  cell1.textContent = x;
+  cell2.textContent = y;
+  cell3.textContent = r;
+  if (control == 1) {
+    cell4.textContent = "In area";
+  } else {
+    cell4.textContent = "Out of area";
+  }
+  cell5.textContent = timeScript;
+  cell6.textContent = localTime.toLocaleString();
 }
 
 
-// Функция для загрузки данных таблицы из localStorage
-function loadTableData() {
-    var savedData = localStorage.getItem('resultsTableData');
-    if (savedData) {
-        var tableData = JSON.parse(savedData);
 
-        // Очищаем таблицу (кроме заголовка)
-        var table = document.getElementById("resultsTable");
-        while (table.rows.length > 1) {
-            table.deleteRow(1);
-        }
-
-        // Восстанавливаем данные
-        tableData.forEach(function(rowData) {
-            // Просто используем сохраненную строку времени
-            addTableRow(
-                rowData.x,
-                rowData.y,
-                rowData.r,
-                rowData.control,
-                rowData.timeScript,
-                rowData.localTime // используем сохраненную строку, а не новый Date
-            );
-        });
-    }
-}
-
-// Очистка таблицы и localStorage
 function clearTable() {
-    var table = document.getElementById("resultsTable");
-    while (table.rows.length > 1) {
-        table.deleteRow(1);
-    }
-    localStorage.removeItem('resultsTableData');
+  var table = document.getElementById("resultsTable");
+  while (table.rows.length > 1) {
+    table.deleteRow(1);
+  }
+  localStorage.removeItem('resultsTableData');
 }
 
-// Добавьте кнопку для очистки таблицы в ваш HTML:
-// <button onclick="clearTable()">Очистить таблицу</button>
+function addRadiusCheckboxListeners() {
+  var checkboxes = document.getElementsByClassName('checkbox');
+  for (var i = 0; i < checkboxes.length; i++) {
+    checkboxes[i].addEventListener('change', function() {
+      drawAreas();
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  addRadiusCheckboxListeners();
+  drawAreas();
+  updateSpreadDisplay();
+});

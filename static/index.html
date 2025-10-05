@@ -11,7 +11,8 @@
         background-color: #f4f4f4;
         margin: 0;
         padding: 20px;
-    }.container {
+    }
+    .container {
         max-width: 1800px;
         margin: 0 auto;
         padding: 20px;
@@ -72,6 +73,57 @@
         max-height: 900px;
         overflow-y: auto;
     }
+
+    .button-container {
+        display: flex;
+        gap: 5px;
+    }
+
+    .radio-input {
+        display: none;
+    }
+
+    .radio-label {
+        padding: 8px 8px;
+        font-size: 14px;
+        border: 1px solid;
+        background-color: white;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        flex: 1;
+        text-align: center;
+        min-width: 25px;
+    }
+
+    .radio-label:hover {
+        background-color: #e6f2ff;
+    }
+
+    .radio-input:checked + .radio-label {
+        background-color: #007bff;
+        color: white;
+    }
+
+
+
+    .r-radio-label {
+        padding: 5px 5px;
+
+    }
+
+    .r-radio-label:hover {
+        background-color: #e6f2ff;
+    }
+
+    .r-radio-input:checked + .r-radio-label {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .r-radio-input {
+        display: none;
+    }
   </style>
 </head>
 <body>
@@ -96,36 +148,48 @@
       <tr>
         <td></td>
         <td>
-          <legend>Choose X coordinate:</legend>
-          <input type="checkbox" class="checkbox" id="-3" name="X-3" value="-3">
-          <label for="-3"> -3</label>
-          <input type="checkbox" class="checkbox" id="-2" name="X-2" value="-2">
-          <label for="-2"> -2</label>
-          <input type="checkbox" class="checkbox" id="-1" name="X-1" value="-1">
-          <label for="-1"> -1</label>
-          <input type="checkbox" class="checkbox" id="0" name="X0" value="0">
-          <label for="0"> 0</label>
-          <input type="checkbox" class="checkbox" id="1" name="X1" value="1">
-          <label for="1"> 1</label>
-          <input type="checkbox" class="checkbox" id="2" name="X2" value="2">
-          <label for="2"> 2</label>
-          <input type="checkbox" class="checkbox" id="3" name="X3" value="3">
-          <label for="3"> 3</label>
-          <input type="checkbox" class="checkbox" id="4" name="X4" value="4">
-          <label for="4"> 4</label>
-          <input type="checkbox" class="checkbox" id="5" name="X5" value="5">
-          <label for="5"> 5</label>
+          <label for="X">Choose X coordinate (from -5 to 5):</label>
+          <div>
+            <input
+                    type="text"
+                    id="X"
+                    name="yCoordinate"/>
+          </div>
+
         </td>
         <td></td>
       </tr>
       <tr>
         <td></td>
-        <td><label for="Y">Choose Y coordinate (from -3 to 5):</label>
+        <td>
+          <label>Choose Y Coordinate:</label>
           <div>
-            <input
-                    type="text"
-                    id="Y"
-                    name="yCoordinate"/>
+            <input type="radio" id="btn-minus4" name="numberGroup" value="-4 " class="radio-input">
+            <label for="btn-minus4" class="radio-label">-4&nbsp</label>
+
+            <input type="radio" id="btn-minus3" name="numberGroup" value="-3" class="radio-input">
+            <label for="btn-minus3" class="radio-label">-3&nbsp</label>
+
+            <input type="radio" id="btn-minus2" name="numberGroup" value="-2" class="radio-input">
+            <label for="btn-minus2" class="radio-label">-2&nbsp</label>
+
+            <input type="radio" id="btn-minus1" name="numberGroup" value="-1" class="radio-input">
+            <label for="btn-minus1" class="radio-label">-1&nbsp</label>
+
+            <input type="radio" id="btn0" name="numberGroup" value="0" class="radio-input">
+            <label for="btn0" class="radio-label">&nbsp0&nbsp</label>
+
+            <input type="radio" id="btn1" name="numberGroup" value="1" class="radio-input">
+            <label for="btn1" class="radio-label">&nbsp1&nbsp</label>
+
+            <input type="radio" id="btn2" name="numberGroup" value="2" class="radio-input">
+            <label for="btn2" class="radio-label">&nbsp2&nbsp</label>
+
+            <input type="radio" id="btn3" name="numberGroup" value="3" class="radio-input">
+            <label for="btn3" class="radio-label">&nbsp3&nbsp</label>
+
+            <input type="radio" id="btn4" name="numberGroup" value="4" class="radio-input">
+            <label for="btn4" class="radio-label">&nbsp4&nbsp</label>
           </div>
         </td>
         <td></td>
@@ -133,23 +197,17 @@
       <tr>
         <td></td>
         <td>
-          <legend>Choose R value:</legend>
-          <div>
-            <input type="radio" id="R1" name="drone" value="1" checked />
-            <label for="R1">1</label>
-
-            <input type="radio" id="R2" name="drone" value="2" />
-            <label for="R2">2</label>
-
-            <input type="radio" id="R3" name="drone" value="3" />
-            <label for="R3">3</label>
-
-            <input type="radio" id="R4" name="drone" value="4" />
-            <label for="R4">4</label>
-
-            <input type="radio" id="R5" name="drone" value="5" />
-            <label for="R5">5</label>
-          </div>
+          <legend>Choose R:</legend>
+          <input type="checkbox" class="checkbox" id="1" name="R1" value="1">
+          <label for="1"> 1</label>
+          <input type="checkbox" class="checkbox" id="1.5" name="R1.5" value="1.5">
+          <label for="1.5"> 1.5</label>
+          <input type="checkbox" class="checkbox" id="2" name="R2" value="2">
+          <label for="2"> 2</label>
+          <input type="checkbox" class="checkbox" id="2.5" name="R2.5" value="2.5">
+          <label for="2.5"> 2.5</label>
+          <input type="checkbox" class="checkbox" id="3" name="R3" value="3">
+          <label for="3"> 3</label>
         </td>
         <td></td>
       </tr>
