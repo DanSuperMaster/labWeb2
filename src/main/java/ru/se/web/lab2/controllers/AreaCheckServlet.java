@@ -19,7 +19,7 @@ import utils.Calculator;
 
 
 
-@WebServlet("/area")
+//@WebServlet("/area")
 
 public class AreaCheckServlet extends HttpServlet {
     ResultsDAO resultsDAO = new ResultsDAO();

@@ -31,7 +31,7 @@ const params = new URLSearchParams({
   r: "1000"
 });
 
-var answer = fetch(`/control?${params}`, {
+var answer = fetch(`http://localhost:16500/web2/control?${params}`, {
   method: 'GET',
   headers: {
     'Content-Type': 'application/json',
@@ -138,6 +138,7 @@ function updateSpreadDisplay() {
 
 // Функция для генерации случайной точки внутри круга
 function getRandomPointInCircle(centerX, centerY, radius) {
+  // Генерируем случайный угол и расстояние
   var angle = Math.random() * 2 * Math.PI;
   var distance = Math.random() * radius;
 
@@ -151,17 +152,18 @@ function getRandomPointInCircle(centerX, centerY, radius) {
 // Функция для обработки входа мыши на canvas
 function handleCanvasMouseEnter() {
   isMouseOverCanvas = true;
-  print.style.cursor = "crosshair";
-  drawAreas();
+  print.style.cursor = "crosshair"; // Меняем курсор на прицел
+  drawAreas(); // Перерисовываем с кругом разброса
 }
 
-
+// Функция для обработки выхода мыши с canvas
 function handleCanvasMouseLeave() {
   isMouseOverCanvas = false;
-  print.style.cursor = "default";
-  drawAreas();
+  print.style.cursor = "default"; // Возвращаем стандартный курсор
+  drawAreas(); // Перерисовываем без круга разброса
 }
 
+// Функция для обработки движения мыши по canvas
 function handleCanvasMouseMove(event) {
   if (!isMouseOverCanvas) return;
 
@@ -169,35 +171,43 @@ function handleCanvasMouseMove(event) {
   currentMouseX = event.clientX - rect.left;
   currentMouseY = event.clientY - rect.top;
 
+  // Перерисовываем canvas с обновленным кругом разброса
   drawAreas();
 }
 
+// Функция для отрисовки прицела и круга разброса
 function drawCrosshairAndSpread(x, y) {
   var selectedRadii = getCheckedCheckBoxes();
   if (selectedRadii.length === 0) return;
 
   var currentR = parseFloat(selectedRadii[0]);
 
+  // Преобразуем координаты мыши в математические координаты
   var mathCoords = convertCanvasToMath(x, y);
 
+  // Отрисовываем круг разброса (прозрачный круг)
   ctx.beginPath();
   ctx.arc(x, y, spreadRadius, 0, 2 * Math.PI);
   ctx.strokeStyle = 'rgba(0, 100, 255, 0.7)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  // Отрисовываем заливку круга разброса (очень прозрачная)
   ctx.beginPath();
   ctx.arc(x, y, spreadRadius, 0, 2 * Math.PI);
   ctx.fillStyle = 'rgba(0, 100, 255, 0.1)';
   ctx.fill();
 
+  // Отрисовываем прицел (крестик)
   ctx.beginPath();
   ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
   ctx.lineWidth = 1.5;
 
+  // Вертикальная линия
   ctx.moveTo(x, y - 12);
   ctx.lineTo(x, y + 12);
 
+  // Горизонтальная линия
   ctx.moveTo(x - 12, y);
   ctx.lineTo(x + 12, y);
 
@@ -206,6 +216,7 @@ function drawCrosshairAndSpread(x, y) {
 
   ctx.stroke();
 
+  // Отображаем координаты рядом с курсором
   ctx.fillStyle = 'black';
   ctx.font = '12px Arial';
   ctx.fillText(`X: ${mathCoords.x.toFixed(2)}, Y: ${mathCoords.y.toFixed(2)}`, x + 15, y - 15);
@@ -216,7 +227,9 @@ function drawCrosshairAndSpread(x, y) {
   ctx.fillText(`Радиус: ${spreadRadius}px`, x + 15, y + 45);
 }
 
+// Функция для обработки клика на canvas
 function handleCanvasClick(event) {
+  // Получаем выбранные радиусы
   var listOfR = getCheckedCheckBoxes();
 
   if (listOfR.length === 0) {
@@ -224,17 +237,41 @@ function handleCanvasClick(event) {
     return;
   }
 
+  // Получаем координаты клика относительно canvas
   var rect = print.getBoundingClientRect();
   var clickX = event.clientX - rect.left;
   var clickY = event.clientY - rect.top;
 
+  // Генерируем случайную точку внутри круга разброса
   var randomPoint = getRandomPointInCircle(clickX, clickY, spreadRadius);
 
+  // Преобразуем координаты canvas в математические координаты
   var mathCoords = convertCanvasToMath(randomPoint.x, randomPoint.y);
 
+  // Отображаем точку разброса на графике
+  drawSpreadPoint(randomPoint.x, randomPoint.y);
+
+  // Отправляем точку и получаем результат попадания
   sendPointWithSpread(mathCoords.x, mathCoords.y, listOfR, randomPoint.x, randomPoint.y);
 }
 
+// Функция для отрисовки точки разброса (временная)
+function drawSpreadPoint(x, y) {
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, 2 * Math.PI);
+  ctx.fillStyle = 'rgba(255, 165, 0, 0.8)'; // Оранжевый цвет
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 100, 0, 0.9)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Исчезает через 500ms
+  setTimeout(() => {
+    drawAreas(); // Перерисовываем без временной точки
+  }, 500);
+}
+
+// Функция для отправки точки с учетом системы разброса
 function sendPointWithSpread(x, y, r, canvasX, canvasY) {
   console.log("Отправка точки с разбросом: X=" + x + ", Y=" + y + ", R=" + r.join(','));
 
@@ -244,7 +281,7 @@ function sendPointWithSpread(x, y, r, canvasX, canvasY) {
     r: r.join(',')
   });
 
-  var answer = fetch(`/control?${params}`, {
+  var answer = fetch(`http://localhost:16500/web2/control?${params}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -260,9 +297,11 @@ function sendPointWithSpread(x, y, r, canvasX, canvasY) {
     console.log("Количество элементов:", data.length);
     clearTable();
 
+    // Проверяем результат последней точки (предполагаем, что последняя - это наша)
     var lastResult = data[data.length - 1];
     var isHit = lastResult.control == 1;
 
+    // Обновляем систему разброса
     updateSpreadSystem(isHit);
 
     for (let i = 0; i < data.length; i++) {
@@ -275,7 +314,10 @@ function sendPointWithSpread(x, y, r, canvasX, canvasY) {
         new Date().toLocaleTimeString(),
       );
     }
+    // Сохраняем таблицу после добавления новых данных
+    saveTableData();
 
+    // Перерисовываем области и точки
     drawAreas();
   }).catch(error => {
     console.error('Ошибка:', error);
@@ -285,44 +327,54 @@ function sendPointWithSpread(x, y, r, canvasX, canvasY) {
   document.getElementById("demo").innerHTML = "Точка отправлена: X=" + x + ", Y=" + y + " (случайный разброс)";
 }
 
+// Функция для преобразования координат canvas в математические координаты
 function convertCanvasToMath(canvasX, canvasY) {
+  // Центр координат на canvas
   var centerX = 23 * 8; // 184
   var centerY = 23 * 9; // 207
 
+  // Максимальные значения на осях (предполагаем R=3)
   var maxR = 3;
 
   // Масштабные коэффициенты
-  var scaleX = 177 / maxR;
-  var scaleY = 177 / maxR;
+  var scaleX = 177 / maxR; // пикселей на единицу R по X
+  var scaleY = 177 / maxR; // пикселей на единицу R по Y
 
+  // Преобразуем координаты
   var mathX = (canvasX - centerX) / scaleX;
-  var mathY = (centerY - canvasY) / scaleY;
+  var mathY = (centerY - canvasY) / scaleY; // инвертируем Y, так как на canvas ось Y направлена вниз
 
+  // Округляем до 2 знаков после запятой
   mathX = Math.round(mathX * 100) / 100;
   mathY = Math.round(mathY * 100) / 100;
 
   return { x: mathX, y: mathY };
 }
 
+// Функция для преобразования математических координат в координаты canvas
 function convertMathToCanvas(mathX, mathY, currentR) {
+  // Центр координат на canvas
   var centerX = 23 * 8; // 184
   var centerY = 23 * 9; // 207
 
+  // Масштабные коэффициенты (основаны на R=3)
   var scale = currentR / 3;
-  var scaleX = 177 * scale;
-  var scaleY = 177 * scale;
+  var scaleX = 177 * scale; // пикселей для текущего R по X
+  var scaleY = 177 * scale; // пикселей для текущего R по Y
 
+  // Преобразуем координаты
   var canvasX = centerX + mathX * (scaleX / currentR);
   var canvasY = centerY - mathY * (scaleY / currentR); // инвертируем Y
 
   return { x: canvasX, y: canvasY };
 }
 
-
+// Функция для отрисовки точек из таблицы
 function drawPointsFromTable() {
   var table = document.getElementById("resultsTable");
   var rows = table.rows;
 
+  // Начинаем с 1, чтобы пропустить заголовок
   for (var i = 1; i < rows.length; i++) {
     var cells = rows[i].cells;
     var x = parseFloat(cells[0].textContent);
@@ -330,20 +382,26 @@ function drawPointsFromTable() {
     var r = parseFloat(cells[2].textContent);
     var control = cells[3].textContent === "In area";
 
+    // Отрисовываем точку
     drawPoint(x, y, r, control);
   }
 }
 
+// Функция для отрисовки одной точки
 function drawPoint(x, y, r, isInArea) {
+  // Получаем текущие выбранные радиусы для масштабирования
   var selectedRadii = getCheckedCheckBoxes();
   if (selectedRadii.length === 0) return;
 
-  var currentR = parseFloat(selectedRadii[0]);
+  var currentR = parseFloat(selectedRadii[0]); // Используем первый выбранный радиус для масштабирования
 
+  // Преобразуем математические координаты в координаты canvas
   var canvasCoords = convertMathToCanvas(x, y, currentR);
 
+  // Выбираем цвет в зависимости от попадания в область
   var color = isInArea ? 'green' : 'red';
 
+  // Отрисовываем точку
   ctx.beginPath();
   ctx.arc(canvasCoords.x, canvasCoords.y, 4, 0, 2 * Math.PI);
   ctx.fillStyle = color;
@@ -353,6 +411,7 @@ function drawPoint(x, y, r, isInArea) {
   ctx.stroke();
 }
 
+// Функция для отправки точки (старая версия для кнопки)
 function sendPoint(x, y, r) {
   console.log("Отправка точки: X=" + x + ", Y=" + y + ", R=" + r.join(','));
 
@@ -387,7 +446,10 @@ function sendPoint(x, y, r) {
         new Date().toLocaleTimeString(),
       );
     }
+    // Сохраняем таблицу после добавления новых данных
+    saveTableData();
 
+    // Перерисовываем области и точки
     drawAreas();
   }).catch(error => {
     console.error('Ошибка:', error);
@@ -397,12 +459,17 @@ function sendPoint(x, y, r) {
   document.getElementById("demo").innerHTML = "Точка отправлена: X=" + x + ", Y=" + y;
 }
 
+// Загрузка сохраненных данных при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
+  // Даем время на полную загрузку DOM
   setTimeout(function() {
     addRadiusCheckboxListeners();
 
+    // Проверяем, что canvas доступен
     if (print && print.getContext) {
       drawAreas();
+      // Загружаем и отрисовываем точки из таблицы
+      // Инициализируем отображение системы разброса
       updateSpreadDisplay();
     } else {
       console.error('Canvas element not found or not supported');
@@ -410,6 +477,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 100);
 });
 
+// Остальные функции (getCheckedCheckBoxes, drawCoordinates, и т.д.) остаются без изменений
+// ... [остальной код без изменений] ...
 
 function getCheckedCheckBoxes() {
   var checkboxes = document.getElementsByClassName('checkbox');
@@ -494,16 +563,22 @@ function drawLetters() {
 }
 
 function drawAreas() {
+  // Очищаем canvas перед отрисовкой
   ctx.clearRect(0, 0, print.width, print.height);
 
+  // Перерисовываем координатную систему
   drawCoordinates();
 
+  // Получаем выбранные радиусы
   var selectedRadii = getCheckedCheckBoxes();
 
+  // Центр координат
   var centerX = 23 * 8; // 184
   var centerY = 23 * 9; // 207
 
+  // Если выбран радиус, рисуем области
   if (selectedRadii.length > 0) {
+    // Цвета для разных радиусов
     var colors = [
       'rgba(0, 0, 255, 0.3)',    // синий
       'rgba(0, 255, 0, 0.3)',    // зеленый
@@ -515,6 +590,7 @@ function drawAreas() {
       'rgba(255, 165, 0, 0.3)'   // оранжевый
     ];
 
+    // Отрисовываем области для каждого выбранного радиуса
     for (var i = 0; i < selectedRadii.length; i++) {
       var currentR = parseFloat(selectedRadii[i]);
       var color = colors[i % colors.length];
@@ -523,6 +599,7 @@ function drawAreas() {
       var scaledR = 177 * scale;
       var scaledHalfR = scaledR / 2;
 
+      // Сектор круга (1-я четверть)
       ctx.beginPath();
       ctx.fillStyle = color;
       ctx.moveTo(centerX, centerY);
@@ -530,6 +607,7 @@ function drawAreas() {
       ctx.closePath();
       ctx.fill();
 
+      // Треугольник (3-я четверть)
       ctx.beginPath();
       ctx.fillStyle = color;
       ctx.moveTo(centerX, centerY);
@@ -538,12 +616,14 @@ function drawAreas() {
       ctx.closePath();
       ctx.fill();
 
+      // Прямоугольник (4-я четверть)
       ctx.beginPath();
       ctx.fillStyle = color;
       ctx.rect(centerX, centerY, -scaledR, -scaledHalfR);
       ctx.fill();
       ctx.closePath();
 
+      // Подпись радиуса
       ctx.fillStyle = 'black';
       ctx.font = '12px Arial';
       ctx.fillText('R=' + currentR, centerX + 10, 20 + i * 15);
@@ -551,13 +631,14 @@ function drawAreas() {
 
   }
 
+  // Отрисовываем точки из таблицы
   drawPointsFromTable();
 
+  // Отрисовываем прицел и круг разброса если мышь над canvas
   if (isMouseOverCanvas) {
     drawCrosshairAndSpread(currentMouseX, currentMouseY);
   }
 }
-
 
 
 function pressed() {
@@ -611,16 +692,38 @@ function addTableRow(x, y, r, control, timeScript, localTime) {
   cell6.textContent = localTime.toLocaleString();
 }
 
+// Функция для сохранения данных таблицы в localStorage
+function saveTableData() {
+  var table = document.getElementById("resultsTable");
+  var rows = table.rows;
+  var tableData = [];
+
+  for (var i = 1; i < rows.length; i++) {
+    var cells = rows[i].cells;
+    tableData.push({
+      x: cells[0].textContent,
+      y: cells[1].textContent,
+      r: cells[2].textContent,
+      control: cells[3].textContent === "In area" ? 1 : 0,
+      timeScript: cells[4].textContent,
+      localTime: cells[5].textContent
+    });
+  }
+
+  localStorage.setItem('resultsTableData', JSON.stringify(tableData));
+}
 
 
+
+// Очистка таблицы и localStorage
 function clearTable() {
   var table = document.getElementById("resultsTable");
   while (table.rows.length > 1) {
     table.deleteRow(1);
   }
-  localStorage.removeItem('resultsTableData');
 }
 
+// Добавляем обработчики событий для чекбоксов радиуса
 function addRadiusCheckboxListeners() {
   var checkboxes = document.getElementsByClassName('checkbox');
   for (var i = 0; i < checkboxes.length; i++) {
@@ -630,6 +733,7 @@ function addRadiusCheckboxListeners() {
   }
 }
 
+// Вызываем эту функцию после загрузки DOM
 document.addEventListener('DOMContentLoaded', function() {
   addRadiusCheckboxListeners();
   drawAreas();

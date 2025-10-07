@@ -3,4 +3,23 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
          version="6.0">
+
+
+    <servlet>
+        <servlet-name>control</servlet-name>
+        <servlet-class>ru.se.web.lab2.controllers.ControllerServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>control</servlet-name>
+        <url-pattern>/control</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>area</servlet-name>
+        <servlet-class>ru.se.web.lab2.controllers.AreaCheckServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>area</servlet-name>
+        <url-pattern>/area</url-pattern>
+    </servlet-mapping>
 </web-app>
