@@ -351,15 +351,15 @@ function drawPointsFromTable() {
     var x = parseFloat(cells[0].textContent);
     var y = parseFloat(cells[1].textContent);
     var r = parseFloat(cells[2].textContent);
-    var control = cells[3].textContent === "In area";
+    var isHit = cells[3].textContent.trim() === "Hit";
 
     // Отрисовываем точку
-    drawPoint(x, y, r, control);
+    drawPoint(x, y, r, isHit);
   }
 }
 
 // Функция для отрисовки одной точки
-function drawPoint(x, y, r, isInArea) {
+function drawPoint(x, y, r, isHit) {
   // Получаем текущие выбранные радиусы для масштабирования
   var selectedRadii = getCheckedCheckBoxes();
   if (selectedRadii.length === 0) return;
@@ -370,7 +370,7 @@ function drawPoint(x, y, r, isInArea) {
   var canvasCoords = convertMathToCanvas(x, y, currentR);
 
   // Выбираем цвет в зависимости от попадания в область
-  var color = isInArea ? 'green' : 'red';
+  var color = isHit  ? 'green' : 'red';
 
   // Отрисовываем точку
   ctx.beginPath();
