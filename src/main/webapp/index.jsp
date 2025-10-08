@@ -1,10 +1,12 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Web lab 1</title>
+  <title>Web lab 2</title>
   <style>
+    /* ваш существующий CSS стиль */
     body {
         font-family: 'Arial', sans-serif;
         line-height: 1.6;
@@ -106,8 +108,6 @@
         color: white;
     }
 
-
-
     .r-radio-label {
         padding: 5px 5px;
 
@@ -124,6 +124,17 @@
 
     .r-radio-input {
         display: none;
+    }
+
+    /* Стиль для попадания/непопадания */
+    .hit-true {
+        color: green;
+        font-weight: bold;
+    }
+
+    .hit-false {
+        color: red;
+        font-weight: bold;
     }
   </style>
 </head>
@@ -238,7 +249,19 @@
         </tr>
         </thead>
         <tbody>
-
+          <!-- Данные загружаются из бина ResultsDAO -->
+          <c:forEach var="result" items="${resultsDAO.results}">
+            <tr>
+              <td>${result.x}</td>
+              <td>${result.y}</td>
+              <td>${result.r}</td>
+              <td class="${result.hit == 1 ? 'hit-true' : 'hit-false'}">
+                ${result.hit == 1 ? 'Hit' : 'Miss'}
+              </td>
+              <td>${result.executionTime} ns</td>
+              <td>${result.timestamp}</td>
+            </tr>
+          </c:forEach>
         </tbody>
       </table>
     </div>

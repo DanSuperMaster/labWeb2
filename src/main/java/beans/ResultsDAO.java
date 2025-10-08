@@ -1,17 +1,13 @@
 package beans;
 
-import javax.faces.bean.ApplicationScoped;
-import javax.faces.bean.ManagedBean;
-import java.io.*;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-@ManagedBean
-@ApplicationScoped
 public class ResultsDAO implements Serializable {
-    private final List<beans.Result> results = new ArrayList<Result>();
+    private final List<Result> results = new ArrayList<Result>();
 
-    public void addResult(beans.Result result) {
+    public void addResult(Result result) {
         results.add(result);
     }
 
@@ -22,6 +18,4 @@ public class ResultsDAO implements Serializable {
     public void clearResults() {
         results.clear();
     }
-
-
 }

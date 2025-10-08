@@ -18,6 +18,7 @@ public class Result implements Serializable {
         this.y = y;
         this.r = r;
         this.hit = hit;
+        this.timestamp = LocalDateTime.now();
         this.executionTime = executionTime;
     }
 
@@ -31,7 +32,7 @@ public class Result implements Serializable {
     public double getR() { return r; }
     public void setR(double r) { this.r = r; }
 
-    public int isHit() { return hit; }
+    public int getHit() { return hit; }
     public void setHit(int hit) { this.hit = hit; }
 
     public LocalDateTime getTimestamp() { return timestamp; }

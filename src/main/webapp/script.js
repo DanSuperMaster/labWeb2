@@ -4,6 +4,7 @@ var ctx = print.getContext("2d");
 button.addEventListener("click", pressed);
 ctx.lineWidth = 1;
 drawCoordinates();
+const contextPath = 'http://localhost:8080';
 
 // Добавляем обработчики событий для canvas
 print.addEventListener("click", handleCanvasClick);
@@ -18,7 +19,7 @@ var currentMouseY = 0;
 
 // Система разброса
 var spreadRadius = 20; // Начальный радиус разброса
-var minSpreadRadius = 5; // Минимальный радиус
+var minSpreadRadius = 0; // Минимальный радиус
 var maxSpreadRadius = 40; // Максимальный радиус
 var hitCount = 0; // Счетчик попаданий
 var missCount = 0; // Счетчик промахов
@@ -31,7 +32,7 @@ const params = new URLSearchParams({
   r: "1000"
 });
 
-var answer = fetch(`http://localhost:16500/web2/control?${params}`, {
+/*var answer = fetch(`/${contextPath}/control?${params}`, {
   method: 'GET',
   headers: {
     'Content-Type': 'application/json',
@@ -57,7 +58,7 @@ var answer = fetch(`http://localhost:16500/web2/control?${params}`, {
   }
   // После добавления данных в таблицу отрисовываем точки
   drawPointsFromTable();
-});
+});*/
 
 // Функция для обновления системы разброса
 function updateSpreadSystem(isHit) {
@@ -275,54 +276,24 @@ function drawSpreadPoint(x, y) {
 function sendPointWithSpread(x, y, r, canvasX, canvasY) {
   console.log("Отправка точки с разбросом: X=" + x + ", Y=" + y + ", R=" + r.join(','));
 
-  const params = new URLSearchParams({
-    x: String(x),
-    y: String(y),
-    r: r.join(',')
-  });
+  const form = document.createElement('form');
+        form.method = 'GET';
+        form.action = 'control';
 
-  var answer = fetch(`http://localhost:16500/web2/control?${params}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    }
-  }).then(response => {
-    console.log(response)
-    if (!response.ok) {
-      throw new Error('Ошибка сети: ' + response.status);
-    }
-    return response.json();
-  }).then(data => {
-    console.log("Получены данные:", data);
-    console.log("Количество элементов:", data.length);
-    clearTable();
+        const addField = (name, value) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+        };
 
-    // Проверяем результат последней точки (предполагаем, что последняя - это наша)
-    var lastResult = data[data.length - 1];
-    var isHit = lastResult.control == 1;
+        addField('x', String(x));
+        addField('y', String(y));
+        addField('r', r.join(','));
 
-    // Обновляем систему разброса
-    updateSpreadSystem(isHit);
-
-    for (let i = 0; i < data.length; i++) {
-      addTableRow(
-        data[i].x,
-        data[i].y,
-        data[i].r,
-        data[i].control,
-        data[i].timeOfProcess,
-        new Date().toLocaleTimeString(),
-      );
-    }
-    // Сохраняем таблицу после добавления новых данных
-    saveTableData();
-
-    // Перерисовываем области и точки
-    drawAreas();
-  }).catch(error => {
-    console.error('Ошибка:', error);
-    document.getElementById("demo").innerHTML = "Ошибка: " + error.message;
-  });
+        document.body.appendChild(form);
+        form.submit();
 
   document.getElementById("demo").innerHTML = "Точка отправлена: X=" + x + ", Y=" + y + " (случайный разброс)";
 }
@@ -413,329 +384,310 @@ function drawPoint(x, y, r, isInArea) {
 
 // Функция для отправки точки (старая версия для кнопки)
 function sendPoint(x, y, r) {
-  console.log("Отправка точки: X=" + x + ", Y=" + y + ", R=" + r.join(','));
+  console.log('Отправка точки: X=' + x + ', Y=' + y + ', R=' + r.join(','));
 
-  const params = new URLSearchParams({
-    x: String(x),
-    y: String(y),
-    r: r.join(',')
-  });
+   const form = document.createElement('form');
+      form.method = 'GET';
+      form.action = 'control';
 
-  var answer = fetch(`/control?${params}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    }
-  }).then(response => {
-    console.log(response)
-    if (!response.ok) {
-      throw new Error('Ошибка сети: ' + response.status);
-    }
-    return response.json();
-  }).then(data => {
-    console.log("Получены данные:", data);
-    console.log("Количество элементов:", data.length);
-    clearTable();
-    for (let i = 0; i < data.length; i++) {
-      addTableRow(
-        data[i].x,
-        data[i].y,
-        data[i].r,
-        data[i].control,
-        data[i].timeOfProcess,
-        new Date().toLocaleTimeString(),
-      );
-    }
-    // Сохраняем таблицу после добавления новых данных
-    saveTableData();
+      const addField = (name, value) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = name;
+          input.value = value;
+          form.appendChild(input);
+      };
 
-    // Перерисовываем области и точки
-    drawAreas();
-  }).catch(error => {
-    console.error('Ошибка:', error);
-    document.getElementById("demo").innerHTML = "Ошибка: " + error.message;
-  });
+      addField('x', String(x));
+      addField('y', String(y));
+      addField('r', r.join(','));
 
-  document.getElementById("demo").innerHTML = "Точка отправлена: X=" + x + ", Y=" + y;
+      document.body.appendChild(form);
+      form.submit();
+
+
+  document.getElementById('demo').innerHTML =
+    'Точка отправлена: X=' + x + ', Y=' + y;
 }
 
-// Загрузка сохраненных данных при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-  // Даем время на полную загрузку DOM
-  setTimeout(function() {
-    addRadiusCheckboxListeners();
 
-    // Проверяем, что canvas доступен
-    if (print && print.getContext) {
-      drawAreas();
-      // Загружаем и отрисовываем точки из таблицы
-      // Инициализируем отображение системы разброса
-      updateSpreadDisplay();
-    } else {
-      console.error('Canvas element not found or not supported');
-    }
-  }, 100);
-});
+// Загрузка сохраненных данных при загрузке страницы
+  document.addEventListener('DOMContentLoaded', function() {
+    // Даем время на полную загрузку DOM
+    setTimeout(function() {
+      addRadiusCheckboxListeners();
+
+      // Проверяем, что canvas доступен
+      if (print && print.getContext) {
+        drawAreas();
+        // Загружаем и отрисовываем точки из таблицы
+        // Инициализируем отображение системы разброса
+        updateSpreadDisplay();
+      } else {
+        console.error('Canvas element not found or not supported');
+      }
+    }, 100);
+  });
 
 // Остальные функции (getCheckedCheckBoxes, drawCoordinates, и т.д.) остаются без изменений
 // ... [остальной код без изменений] ...
 
-function getCheckedCheckBoxes() {
-  var checkboxes = document.getElementsByClassName('checkbox');
-  var checkboxesChecked = [];
-  for (var index = 0; index < checkboxes.length; index++) {
-    if (checkboxes[index].checked) {
-      checkboxesChecked.push(checkboxes[index].value);
+  function getCheckedCheckBoxes() {
+    var checkboxes = document.getElementsByClassName('checkbox');
+    var checkboxesChecked = [];
+    for (var index = 0; index < checkboxes.length; index++) {
+      if (checkboxes[index].checked) {
+        checkboxesChecked.push(checkboxes[index].value);
+      }
+    }
+    return checkboxesChecked;
+  }
+
+  function drawCoordinates() {
+    ctx.beginPath();
+    ctx.strokeStyle = 'black';
+    ctx.moveTo(23 * 8, 0);
+    ctx.lineTo(23 * 8, 400);
+    ctx.moveTo(0, 23 * 9);
+    ctx.lineTo(400, 23 * 9);
+    drawArrowX();
+    drawArrowY();
+    drawSmallLines();
+    drawLetters();
+    ctx.stroke();
+  }
+
+  function drawArrowX() {
+    ctx.moveTo(400 - 6, 23 * 9 - 6);
+    ctx.lineTo(400, 23 * 9);
+    ctx.moveTo(400 - 6, 23 * 9 + 6);
+    ctx.lineTo(400, 23 * 9);
+  }
+
+  function drawArrowY() {
+    ctx.moveTo(23 * 8 - 6, 0 + 6);
+    ctx.lineTo(23 * 8, 0);
+    ctx.moveTo(23 * 8 + 6, 0 + 6);
+    ctx.lineTo(23 * 8, 0);
+  }
+
+  function drawSmallLines() {
+    ctx.moveTo(23 * 8 - 3, 120);
+    ctx.lineTo(23 * 8 + 3, 120);
+
+    ctx.moveTo(23 * 8 - 3, 30);
+    ctx.lineTo(23 * 8 + 3, 30);
+
+    ctx.moveTo(23 * 8 - 3, 295);
+    ctx.lineTo(23 * 8 + 3, 295);
+
+    ctx.moveTo(23 * 8 - 3, 390);
+    ctx.lineTo(23 * 8 + 3, 390);
+
+    ctx.moveTo(361, 23 * 9 - 3);
+    ctx.lineTo(361, 23 * 9 + 3);
+
+    ctx.moveTo(270, 23 * 9 - 3);
+    ctx.lineTo(270, 23 * 9 + 3);
+
+    ctx.moveTo(96, 23 * 9 - 3);
+    ctx.lineTo(96, 23 * 9 + 3);
+
+    ctx.moveTo(8, 23 * 9 - 3);
+    ctx.lineTo(8, 23 * 9 + 3);
+  }
+
+  function drawLetters() {
+    ctx.fillText("1.5", 23 * 8 - 22, 110);
+
+    ctx.fillText("3", 23 * 8 - 12, 30);
+
+    ctx.fillText("-1.5", 23 * 8 + 6, 300);
+
+    ctx.fillText("-3", 23 * 8 + 6, 390);
+
+    ctx.fillText("3", 358, 23 * 9 + 12);
+
+    ctx.fillText("1.5", 270, 23 * 9 + 12);
+
+    ctx.fillText("-1.5", 96, 23 * 9 + 12);
+    ctx.fillText("-3", 8, 23 * 9 + 12);
+  }
+
+  function drawAreas() {
+    // Очищаем canvas перед отрисовкой
+    ctx.clearRect(0, 0, print.width, print.height);
+
+    // Перерисовываем координатную систему
+    drawCoordinates();
+
+    // Получаем выбранные радиусы
+    var selectedRadii = getCheckedCheckBoxes();
+
+    // Центр координат
+    var centerX = 23 * 8; // 184
+    var centerY = 23 * 9; // 207
+
+    // Если выбран радиус, рисуем области
+    if (selectedRadii.length > 0) {
+      // Цвета для разных радиусов
+      var colors = [
+        'rgba(0, 0, 255, 0.3)',    // синий
+        'rgba(0, 255, 0, 0.3)',    // зеленый
+        'rgba(255, 0, 0, 0.3)',    // красный
+        'rgba(255, 255, 0, 0.3)',  // желтый
+        'rgba(255, 0, 255, 0.3)',  // пурпурный
+        'rgba(0, 255, 255, 0.3)',  // голубой
+        'rgba(128, 0, 128, 0.3)',  // фиолетовый
+        'rgba(255, 165, 0, 0.3)'   // оранжевый
+      ];
+
+      // Отрисовываем области для каждого выбранного радиуса
+      for (var i = 0; i < selectedRadii.length; i++) {
+        var currentR = parseFloat(selectedRadii[i]);
+        var color = colors[i % colors.length];
+
+        var scale = currentR / 3;
+        var scaledR = 177 * scale;
+        var scaledHalfR = scaledR / 2;
+
+        // Сектор круга (1-я четверть)
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, scaledHalfR, Math.PI, 0.5 * Math.PI, true);
+        ctx.closePath();
+        ctx.fill();
+
+        // Треугольник (3-я четверть)
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX + scaledR, centerY);
+        ctx.lineTo(centerX, centerY + scaledHalfR);
+        ctx.closePath();
+        ctx.fill();
+
+        // Прямоугольник (4-я четверть)
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.rect(centerX, centerY, -scaledR, -scaledHalfR);
+        ctx.fill();
+        ctx.closePath();
+
+        // Подпись радиуса
+        ctx.fillStyle = 'black';
+        ctx.font = '12px Arial';
+        ctx.fillText('R=' + currentR, centerX + 10, 20 + i * 15);
+      }
+
+    }
+
+    // Отрисовываем точки из таблицы
+    drawPointsFromTable();
+
+    // Отрисовываем прицел и круг разброса если мышь над canvas
+    if (isMouseOverCanvas) {
+      drawCrosshairAndSpread(currentMouseX, currentMouseY);
     }
   }
-  return checkboxesChecked;
-}
-
-function drawCoordinates() {
-  ctx.beginPath();
-  ctx.strokeStyle = 'black';
-  ctx.moveTo(23 * 8, 0);
-  ctx.lineTo(23 * 8, 400);
-  ctx.moveTo(0, 23 * 9);
-  ctx.lineTo(400, 23 * 9);
-  drawArrowX();
-  drawArrowY();
-  drawSmallLines();
-  drawLetters();
-  ctx.stroke();
-}
-
-function drawArrowX() {
-  ctx.moveTo(400 - 6, 23 * 9 - 6);
-  ctx.lineTo(400, 23 * 9);
-  ctx.moveTo(400 - 6, 23 * 9 + 6);
-  ctx.lineTo(400, 23 * 9);
-}
-
-function drawArrowY() {
-  ctx.moveTo(23 * 8 - 6, 0 + 6);
-  ctx.lineTo(23 * 8, 0);
-  ctx.moveTo(23 * 8 + 6, 0 + 6);
-  ctx.lineTo(23 * 8, 0);
-}
-
-function drawSmallLines() {
-  ctx.moveTo(23 * 8 - 3, 120);
-  ctx.lineTo(23 * 8 + 3, 120);
-
-  ctx.moveTo(23 * 8 - 3, 30);
-  ctx.lineTo(23 * 8 + 3, 30);
-
-  ctx.moveTo(23 * 8 - 3, 295);
-  ctx.lineTo(23 * 8 + 3, 295);
-
-  ctx.moveTo(23 * 8 - 3, 390);
-  ctx.lineTo(23 * 8 + 3, 390);
-
-  ctx.moveTo(361, 23 * 9 - 3);
-  ctx.lineTo(361, 23 * 9 + 3);
-
-  ctx.moveTo(270, 23 * 9 - 3);
-  ctx.lineTo(270, 23 * 9 + 3);
-
-  ctx.moveTo(96, 23 * 9 - 3);
-  ctx.lineTo(96, 23 * 9 + 3);
-
-  ctx.moveTo(8, 23 * 9 - 3);
-  ctx.lineTo(8, 23 * 9 + 3);
-}
-
-function drawLetters() {
-  ctx.fillText("1.5", 23 * 8 - 22, 110);
-
-  ctx.fillText("3", 23 * 8 - 12, 30);
-
-  ctx.fillText("-1.5", 23 * 8 + 6, 300);
-
-  ctx.fillText("-3", 23 * 8 + 6, 390);
-
-  ctx.fillText("3", 358, 23 * 9 + 12);
-
-  ctx.fillText("1.5", 270, 23 * 9 + 12);
-
-  ctx.fillText("-1.5", 96, 23 * 9 + 12);
-  ctx.fillText("-3", 8, 23 * 9 + 12);
-}
-
-function drawAreas() {
-  // Очищаем canvas перед отрисовкой
-  ctx.clearRect(0, 0, print.width, print.height);
-
-  // Перерисовываем координатную систему
-  drawCoordinates();
-
-  // Получаем выбранные радиусы
-  var selectedRadii = getCheckedCheckBoxes();
-
-  // Центр координат
-  var centerX = 23 * 8; // 184
-  var centerY = 23 * 9; // 207
-
-  // Если выбран радиус, рисуем области
-  if (selectedRadii.length > 0) {
-    // Цвета для разных радиусов
-    var colors = [
-      'rgba(0, 0, 255, 0.3)',    // синий
-      'rgba(0, 255, 0, 0.3)',    // зеленый
-      'rgba(255, 0, 0, 0.3)',    // красный
-      'rgba(255, 255, 0, 0.3)',  // желтый
-      'rgba(255, 0, 255, 0.3)',  // пурпурный
-      'rgba(0, 255, 255, 0.3)',  // голубой
-      'rgba(128, 0, 128, 0.3)',  // фиолетовый
-      'rgba(255, 165, 0, 0.3)'   // оранжевый
-    ];
-
-    // Отрисовываем области для каждого выбранного радиуса
-    for (var i = 0; i < selectedRadii.length; i++) {
-      var currentR = parseFloat(selectedRadii[i]);
-      var color = colors[i % colors.length];
-
-      var scale = currentR / 3;
-      var scaledR = 177 * scale;
-      var scaledHalfR = scaledR / 2;
-
-      // Сектор круга (1-я четверть)
-      ctx.beginPath();
-      ctx.fillStyle = color;
-      ctx.moveTo(centerX, centerY);
-      ctx.arc(centerX, centerY, scaledHalfR, Math.PI, 0.5 * Math.PI, true);
-      ctx.closePath();
-      ctx.fill();
-
-      // Треугольник (3-я четверть)
-      ctx.beginPath();
-      ctx.fillStyle = color;
-      ctx.moveTo(centerX, centerY);
-      ctx.lineTo(centerX + scaledR, centerY);
-      ctx.lineTo(centerX, centerY + scaledHalfR);
-      ctx.closePath();
-      ctx.fill();
-
-      // Прямоугольник (4-я четверть)
-      ctx.beginPath();
-      ctx.fillStyle = color;
-      ctx.rect(centerX, centerY, -scaledR, -scaledHalfR);
-      ctx.fill();
-      ctx.closePath();
-
-      // Подпись радиуса
-      ctx.fillStyle = 'black';
-      ctx.font = '12px Arial';
-      ctx.fillText('R=' + currentR, centerX + 10, 20 + i * 15);
-    }
-
-  }
-
-  // Отрисовываем точки из таблицы
-  drawPointsFromTable();
-
-  // Отрисовываем прицел и круг разброса если мышь над canvas
-  if (isMouseOverCanvas) {
-    drawCrosshairAndSpread(currentMouseX, currentMouseY);
-  }
-}
 
 
-function pressed() {
-  var listOfR = getCheckedCheckBoxes();
-  var xCoordinateElement = document.getElementById("X");
-  var yCoordinateList = document.querySelector('input[name="numberGroup"]:checked');
-  var YCoordinate = -10;
-  var XCoordinate = "";
+  function pressed() {
+    var listOfR = getCheckedCheckBoxes();
+    var xCoordinateElement = document.getElementById("X");
+    var yCoordinateList = document.querySelector('input[name="numberGroup"]:checked');
+    var YCoordinate = -10;
+    var XCoordinate = "";
 
-  if ((listOfR.length != 0) && (xCoordinateElement) && (yCoordinateList != null)) {
-    YCoordinate = yCoordinateList.value;
-    XCoordinate = xCoordinateElement.value;
-    XCoordinate = XCoordinate.replace(',', '.')
+    if ((listOfR.length != 0) && (xCoordinateElement) && (yCoordinateList != null)) {
+      YCoordinate = yCoordinateList.value;
+      XCoordinate = xCoordinateElement.value;
+      XCoordinate = XCoordinate.replace(',', '.')
 
-    if (!isNaN(XCoordinate) && (XCoordinate >= -5) && (XCoordinate <= 5)) {
-      console.log("sending ... ")
-      sendPoint(XCoordinate, YCoordinate, listOfR);
+      if (!isNaN(XCoordinate) && (XCoordinate >= -5) && (XCoordinate <= 5)) {
+        console.log("sending ... ")
+        sendPoint(XCoordinate, YCoordinate, listOfR);
+      } else {
+        document.getElementById("demo").innerHTML = "You noob! X должен быть числом от -5 до 5";
+      }
     } else {
-      document.getElementById("demo").innerHTML = "You noob! X должен быть числом от -5 до 5";
+      var errorMessage = "Ошибка: ";
+      if (listOfR.length === 0) errorMessage += "выберите R, ";
+      if (!xCoordinateElement) errorMessage += "элемент X не найден, ";
+      if (yCoordinateList == null) errorMessage += "выберите Y";
+
+      document.getElementById("demo").innerHTML = errorMessage;
     }
-  } else {
-    var errorMessage = "Ошибка: ";
-    if (listOfR.length === 0) errorMessage += "выберите R, ";
-    if (!xCoordinateElement) errorMessage += "элемент X не найден, ";
-    if (yCoordinateList == null) errorMessage += "выберите Y";
-
-    document.getElementById("demo").innerHTML = errorMessage;
   }
-}
 
-function addTableRow(x, y, r, control, timeScript, localTime) {
-  var table = document.getElementById("resultsTable");
-  var row = table.insertRow(-1);
+  function addTableRow(x, y, r, control, timeScript, localTime) {
+    var table = document.getElementById("resultsTable");
+    var row = table.insertRow(-1);
 
-  var cell1 = row.insertCell(0);
-  var cell2 = row.insertCell(1);
-  var cell3 = row.insertCell(2);
-  var cell4 = row.insertCell(3);
-  var cell5 = row.insertCell(4);
-  var cell6 = row.insertCell(5);
+    var cell1 = row.insertCell(0);
+    var cell2 = row.insertCell(1);
+    var cell3 = row.insertCell(2);
+    var cell4 = row.insertCell(3);
+    var cell5 = row.insertCell(4);
+    var cell6 = row.insertCell(5);
 
-  cell1.textContent = x;
-  cell2.textContent = y;
-  cell3.textContent = r;
-  if (control == 1) {
-    cell4.textContent = "In area";
-  } else {
-    cell4.textContent = "Out of area";
+    cell1.textContent = x;
+    cell2.textContent = y;
+    cell3.textContent = r;
+    if (control == 1) {
+      cell4.textContent = "In area";
+    } else {
+      cell4.textContent = "Out of area";
+    }
+    cell5.textContent = timeScript;
+    cell6.textContent = localTime.toLocaleString();
   }
-  cell5.textContent = timeScript;
-  cell6.textContent = localTime.toLocaleString();
-}
 
 // Функция для сохранения данных таблицы в localStorage
-function saveTableData() {
-  var table = document.getElementById("resultsTable");
-  var rows = table.rows;
-  var tableData = [];
+  function saveTableData() {
+    var table = document.getElementById("resultsTable");
+    var rows = table.rows;
+    var tableData = [];
 
-  for (var i = 1; i < rows.length; i++) {
-    var cells = rows[i].cells;
-    tableData.push({
-      x: cells[0].textContent,
-      y: cells[1].textContent,
-      r: cells[2].textContent,
-      control: cells[3].textContent === "In area" ? 1 : 0,
-      timeScript: cells[4].textContent,
-      localTime: cells[5].textContent
-    });
+    for (var i = 1; i < rows.length; i++) {
+      var cells = rows[i].cells;
+      tableData.push({
+        x: cells[0].textContent,
+        y: cells[1].textContent,
+        r: cells[2].textContent,
+        control: cells[3].textContent === "In area" ? 1 : 0,
+        timeScript: cells[4].textContent,
+        localTime: cells[5].textContent
+      });
+    }
+
+    localStorage.setItem('resultsTableData', JSON.stringify(tableData));
   }
-
-  localStorage.setItem('resultsTableData', JSON.stringify(tableData));
-}
 
 
 
 // Очистка таблицы и localStorage
-function clearTable() {
-  var table = document.getElementById("resultsTable");
-  while (table.rows.length > 1) {
-    table.deleteRow(1);
+  function clearTable() {
+    var table = document.getElementById("resultsTable");
+    while (table.rows.length > 1) {
+      table.deleteRow(1);
+    }
   }
-}
 
 // Добавляем обработчики событий для чекбоксов радиуса
-function addRadiusCheckboxListeners() {
-  var checkboxes = document.getElementsByClassName('checkbox');
-  for (var i = 0; i < checkboxes.length; i++) {
-    checkboxes[i].addEventListener('change', function() {
-      drawAreas();
-    });
+  function addRadiusCheckboxListeners() {
+    var checkboxes = document.getElementsByClassName('checkbox');
+    for (var i = 0; i < checkboxes.length; i++) {
+      checkboxes[i].addEventListener('change', function() {
+        drawAreas();
+      });
+    }
   }
-}
 
 // Вызываем эту функцию после загрузки DOM
-document.addEventListener('DOMContentLoaded', function() {
-  addRadiusCheckboxListeners();
-  drawAreas();
-  updateSpreadDisplay();
-});
+  document.addEventListener('DOMContentLoaded', function() {
+    addRadiusCheckboxListeners();
+    drawAreas();
+    updateSpreadDisplay();
+  });
